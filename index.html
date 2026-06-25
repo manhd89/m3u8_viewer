@@ -10,6 +10,9 @@
     input, button { padding: 8px; border-radius: 6px; border: none; }  
     input { width: 100%; margin-bottom: 10px; background: #1e293b; color: white; }  
     button { background: #3b82f6; color: white; cursor: pointer; }  
+    button:hover { background: #2563eb; }  
+    .btn-success { background: #10b981; margin-bottom: 10px; } /* Màu xanh lá cho nút download */  
+    .btn-success:hover { background: #059669; }  
     pre { background: #1e293b; padding: 10px; border-radius: 8px; overflow-x: auto; white-space: pre-wrap; }  
     .discontinuity { color: #f87171; font-weight: bold; } /* đỏ cho #EXT-X-DISCONTINUITY */  
   </style>  
@@ -24,11 +27,13 @@
 
   <div class="card" id="metadata" style="display:none">  
     <h3>Metadata</h3>  
+    <button id="downloadBtn" class="btn-success">Tải về danh sách (.txt)</button>  
     <pre id="metaContent"></pre>  
   </div>  
 
   <script>  
     const $ = id => document.getElementById(id);  
+    let rawMetadataText = ""; // Biến toàn cục để lưu trữ text thuần phục vụ việc download
   
     function absoluteUrl(base, url) {  
       try { return new URL(url, base).toString() } catch(e){ return url }  
@@ -70,10 +75,13 @@
         return;  
       }  
       $('status').textContent = "Đang tải...";  
+      $('metadata').style.display = "none";  
+      
       try {  
-        const meta = await loadPlaylist(rawUrl);  
-        // highlight DISCONTINUITY  
-        const highlighted = meta.replace(/(#EXT-X-DISCONTINUITY)/g, '<span class="discontinuity">$1</span>');  
+        rawMetadataText = await loadPlaylist(rawUrl); // Lưu text gốc chưa format HTML
+        
+        // highlight DISCONTINUITY cho giao diện hiển thị  
+        const highlighted = rawMetadataText.replace(/(#EXT-X-DISCONTINUITY)/g, '<span class="discontinuity">$1</span>');  
         $('metaContent').innerHTML = highlighted;  
         $('metadata').style.display = "block";  
         $('status').textContent = "Hoàn tất.";  
@@ -82,8 +90,29 @@
         alert("Lỗi khi lấy dữ liệu:\n" + e.message);  
       }  
     }  
+
+    // Hàm xử lý việc tạo và tải file TXT
+    function downloadTxt() {
+      if (!rawMetadataText) return;
+      
+      // Tạo một Blob chứa dữ liệu text thuần
+      const blob = new Blob([rawMetadataText], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      
+      // Tạo một thẻ <a> tạm thời để trigger download
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'playlist_metadata.txt';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Dọn dẹp sau khi tải
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
   
     $('inspectBtn').addEventListener('click', inspect);  
+    $('downloadBtn').addEventListener('click', downloadTxt);  
   </script>  
 </body>  
 </html>
